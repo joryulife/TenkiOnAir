@@ -16,6 +16,9 @@ from linebot.models import (
 
 from MysqlManager import MysqlConnectorManager
 
+import CheckPostalPattern
+import RequestWhetherApi
+
 token = open('../lib/token.json','r')
 token = json.load(token)
 from linebot.models.events import FollowEvent
@@ -100,24 +103,30 @@ def handle_message(event):
 def flagroute(event,result,CM):
     if result.flag == "ASKADDRESS":
         #messageがddd-ddd形式かチェックしてADDRESSに格納
-        if re.match(r"[0-9]{3}-[0-9]{4}",event.message):
+        postal_res = CheckPostalPattern.CheckPostalCode(event.message.text)
+        if postal_res == 0:
             CM.update_delete_contents(("UPDATE USER SET flag=%s where UserId = %s"),("FLAT",result.UserId))
+            line_bot_api.reply_message(event.reply_token,TextSendMessage(text="郵便番号を登録しました。"))
+        elif postal_res == 1:
+            line_bot_api.reply_message(event.reply_token,TextSendMessage(text="存在する郵便番号を入力してください。"))
         else:
-            line_bot_api.reply_message(event.reply_token,TextSendMessage(text='郵便番号は ddd-dddd の形で送信してください！'))
-        CM.update_delete_contents(("UPDATE USER SET flag=%s where UserId = %s"),("FLAT",result.UserId))
+            line_bot_api.reply_message(event.reply_token,TextSendMessage(text="郵便番号は●●●-●●●●(ハイフンなしも可)で送信してください。"))
         #USAGEMessageを送る
     elif result.flag == "FLAT":
-        if event.message == "干した":
-            ScheduledTime = "00:00"
+        if event.message.text == "干した":
+            dt_now = datetime.datetime.now()
+            postal_code = CM.fetch_contents(("SELECT Uaddress　FROM USER WHERE UserId = %s"),(result.UserId))
+            ScheduledTime = RequestWhetherApi.GetScheduledTime(dt_now,postal_code)
             #取込み予想の計算、メッセージへ　ScheduledTimeに
             CM.update_delete_contents(("UPDATE USER SET flag=%s　ScheduledTime=%s where UserId = %s"),("WaitTakeIn",ScheduledTime,result.UserId))
-        elif event.message == "コレクション":
+            line_bot_api.reply_message(event.reply_token,TextSendMessage(text='洗濯物が乾く時間は' + dt_now.strftime('%m月%d日 %H時%M分です。')))
+        elif event.message.text == "コレクション":
             collection_items = CM.fetch_contents(("SELECT CollectionSum FROM USER ORDER BY %s")('ASC'))
             for item_url in collection_items:
                 line_bot_api.broadcast(ImageSendMessage(original_content_url=item_url, preview_image_url=item_url))
             #DBからコレクションを取得しメッセージへ
             CM.update_delete_contents(("UPDATE USER SET flag=%s where UserId = %s"),("FLAT",result.UserId))
-        elif event.message == "リマインド":
+        elif event.message.text == "リマインド":
             #何時にする？とmessage
             line_bot_api.reply_message(event.reply_token,TextSendMessage(text='何時にする？'))
             CM.update_delete_contents(("UPDATE USER SET flag=%s where UserId = %s"),("WaitRemindTime",result.UserId))
@@ -133,7 +142,7 @@ def flagroute(event,result,CM):
             line_bot_api.reply_message(event.reply_token, TextSendMessage(text=usage))
             CM.update_delete_contents(("UPDATE USER SET flag=%s where UserId = %s"),("FLAT",result.UserId))
     elif result.flag == "WaitTakeIn":
-        if event.message == "取り込んだ":
+        if event.message.text == "取り込んだ":
             #コレクションをランダムで選び、何が貰えたか教える
             if season == 1: # 冬の時
                 random_num = gen_random(128, 256)
@@ -157,8 +166,8 @@ def flagroute(event,result,CM):
             usage = 'もし洗濯物を取り込んだら、「取り込んだ」と送信してください。'
             line_bot_api.reply_message(event.reply_token, TextSendMessage(text=usage))
     elif result.flag == "WaitRemindTime":
-        if re.match(r'([01][0-9]|2[0-1]):[0-5][0-9]',event.message):#だれか正規表現で時刻かどうかみて
-            remindTime = event.message
+        if re.match(r'([01][0-9]|2[0-1]):[0-5][0-9]',event.message.text):#だれか正規表現で時刻かどうかみて
+            remindTime = event.message.text
             CM.update_delete_contents(("UPDATE USER SET flag=%s remindTime=%s where UserId = %s"),("FLAT",remindTime,result.UserId))
         else:
             #USAGEを送る
