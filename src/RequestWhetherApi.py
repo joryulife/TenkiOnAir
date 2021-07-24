@@ -1,8 +1,10 @@
 import requests
 import json
+import datetime
 
-def get_current_weather(input):
-    API_KEY = "xxxxxxx"  # xxxに自分のAPI Keyを入力。
+#OpenWeatherAPIの呼び出し
+def GetWeather(input):
+    API_KEY = "0fedfd4841eac192a6d3f3819f1bd491"  # xxxに自分のAPI Keyを入力。
     api = "http://api.openweathermap.org/data/2.5/forecast?zip={code},jp&units=metric&lang=ja&APPID={key}"
     url = api.format(code=input, key=API_KEY)
 
@@ -27,31 +29,92 @@ def get_current_weather(input):
         res = requests.get(url).json()
         return res
 
-def ApplyFormula(weather,temperature):
-    weather_weight = {700:2,800:1,801:1.2,802:1.5,803:1.7,804:1.8}
-    temperature_wight = {15:2,22:1.7,30:1}
+#天気のパラメータ
+def SetWeatherWeight(dict):
+    weather = int(dict['weather'][0]['id'])
+    #天気の場合分け
+    if 700 > weather:
+        add = 2.0
+    elif 800 == weather:
+        add = 1.0
+    elif 801 == weather:
+        add = 1.2
+    elif 802 == weather:
+        add = 1.5
+    elif 803 == weather:
+        add = 1.7
+    elif 804 == weather:
+        add = 1.8
+    return add
 
-if __name__ == "__main__":
-    #郵便番号
-    postal_code = '466-0827'
-    dict = get_current_weather(postal_code)
-    sum = 0
-    print("場所:" + str(dict["city"]['name']))
-    for i,d in enumerate(dict['list']):
-        if i > 5:
+#気温のパラメータ
+def SetTemperatureWeight(dict):
+    temperature = int(d['main']['temp'])
+    if 8 > temperature:
+        add = 2.0
+    elif 12 > temperature:
+        add = 1.9
+    elif 17 > temperature:
+        add = 1.8
+    elif 22 > temperature:
+        add = 1.7
+    elif 25 > temperature:
+        add = 1.6
+    elif 27 > temperature:
+        add = 1.4
+    elif 30 > temperature:
+        add = 1.2
+    else:
+        add = 1.0
+    return add
+
+"""メイン関数 : 開始時間[datetime]と郵便番号[str]を引数 ==> return 予定時刻[datetime]"""
+def GetScheduledTime(start_time,postal_code):
+    #jsonデータを取得
+    dict = GetWeather(postal_code)
+    #weightを計算
+    weather_sum = 0
+    temperature_sum = 0
+    #現在時刻より未来のデータ4つ分(12時間)を使う
+    i = 0
+    for d in dict['list']:
+        dict_time = datetime.datetime.strptime(d['dt_txt'], '%Y-%m-%d %H:%M:%S')
+        if dict_time > dt_now:
+            print(dict_time)
+            i += 1
+        if i > 3:
             break
-        #時間
-        print("時刻: " + str(d['dt_txt']))
-        #天気
-        print("天気: " + str(d['weather'][0]['description']))
-        #湿度
-        print("湿度: " + str(d['main']['humidity']) + "[%]")
-        #気温
-        print("気温: " + str(d['main']['temp']) + "[℃]")
-        #曇の割合
-        print("雲の割合: " + str(d['clouds']['all']) + "[%]")
-        #降水確率
-        print("降水確率: " + str(d['pop']) + "[%]")
-        i+=1
+        weather_sum += SetWeatherWeight(d)
+        temperature_sum += SetTemperatureWeight(d)
+    #計算式
+    add_hours = round(3.0*(weather_sum/6.0)*(temperature_sum/6.0),1)
+    #datetime型で予定時刻を返す
+    return dt_now + datetime.timedelta(hours=add_hours)
+
+#デバッグ用 ↓
+if __name__ == "__main__":
+    #開始時間と郵便番号
+    dt_now = datetime.datetime.now()
+    postal_code = '466-0827'
+
+    dict = GetWeather(postal_code)
+    weather_sum = 0
+    temperature_sum = 0
+    print("場所:" + str(dict["city"]['name']))
+    i = 0
+    for d in dict['list']:
+        dict_time = datetime.datetime.strptime(d['dt_txt'], '%Y-%m-%d %H:%M:%S')
+        if dict_time > dt_now:
+            print(dict_time)
+            i += 1
+        if i > 3:
+            break
+        weather_sum += SetWeatherWeight(d)
+        temperature_sum += SetTemperatureWeight(d)
+
+    #取り込み時間
+    add_hours = round(3.0*(weather_sum/6.0)*(temperature_sum/6.0),1)
+    print(add_hours)
+    print(dt_now + datetime.timedelta(hours=add_hours))
 
 
