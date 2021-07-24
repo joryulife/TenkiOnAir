@@ -99,10 +99,13 @@ def handle_message(event):
         line_bot_api.reply_message(
             event.reply_token,
             TextSendMessage(text="ddd-dddd 形式で郵便番号を入力してください。"))
+    else:
+        flagroute(event,result,CM)
 
 def flagroute(event,result,CM):
     if result.flag == "ASKADDRESS":
         #messageがddd-ddd形式かチェックしてADDRESSに格納
+<<<<<<< HEAD
         postal_res = CheckPostalPattern.CheckPostalCode(event.message.text)
         if postal_res == 0:
             CM.update_delete_contents(("UPDATE USER SET flag=%s where UserId = %s"),("FLAT",result.UserId))
@@ -122,6 +125,21 @@ def flagroute(event,result,CM):
             line_bot_api.reply_message(event.reply_token,TextSendMessage(text='洗濯物が乾く時間は' + dt_now.strftime('%m月%d日 %H時%M分です。')))
         elif event.message.text == "コレクション":
             collection_items = CM.fetch_contents(("SELECT CollectionSum FROM USER ORDER BY %s")('ASC'))
+=======
+        if re.match(r"[0-9]{3}-[0-9]{4}",event.message.text):
+            CM.update_delete_contents(("UPDATE USER SET flag=%s where UserId = %s"),("FLAT",result.User_id))
+            line_bot_api.reply_message(event.reply_token,TextSendMessage(text= event.message.text + "で登録しました"))
+        else:
+            line_bot_api.reply_message(event.reply_token,TextSendMessage(text='郵便番号は ddd-dddd の形で送信してください！'))
+            CM.update_delete_contents(("UPDATE USER SET flag=%s where UserId = %s"),("FLAT",result.User_id))
+    elif result.flag == "FLAT":
+        if event.message.text == "干した":
+            ScheduledTime = "00:00"
+            #取込み予想の計算、メッセージへ　ScheduledTimeに
+            CM.update_delete_contents(("UPDATE USER SET flag=%s　ScheduledTime=%s where UserId = %s"),("WaitTakeIn",ScheduledTime,result.UserId))
+        elif event.message.text == "コレクション":
+            collection_items = CM.fetch_contents(("SELECT CollectionSum FROM  USER WHERE UserId = %s"),('ASC', ))
+>>>>>>> 1e233f7d38f9c69c18ecb7678d1eccf2c2c8c65b
             for item_url in collection_items:
                 line_bot_api.broadcast(ImageSendMessage(original_content_url=item_url, preview_image_url=item_url))
             #DBからコレクションを取得しメッセージへ
