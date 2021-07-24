@@ -1,3 +1,7 @@
+
+import json
+from flask import Flask, request, abort
+from MysqlManager import MysqlConnectorManager
 from io import DEFAULT_BUFFER_SIZE
 from flask import Flask, request, abort
 from linebot import (
@@ -9,28 +13,30 @@ from linebot.exceptions import (
 from linebot.models import (
     MessageEvent, TextMessage, TextSendMessage,
 )
+
+from MysqlManager import MysqlConnectorManager
+
+token = open('../lib/token.json','r')
+token = json.load(token)
 from linebot.models.events import FollowEvent
 from linebot.models.send_messages import ImageSendMessage
 import json
-import datetime, pytz, random
-
-from ..lib import token
+import datetime, random,pytz
 from MysqlManager import MysqlConnectorManager
+
 sqladdmin = open('../lib/sqladdmin.json','r')
 sqladdmin = json.load(sqladdmin)
+CM = MysqlConnectorManager(user=sqladdmin['user'],
+    password=sqladdmin['password'],
+    host=sqladdmin['host'],
+    database_name=sqladdmin['database'])
+CM.start_connection()
 
 app = Flask(__name__)
-
+token = open('../lib/token.json','r')
+token = json.load(token)
 line_bot_api = LineBotApi(token["CAT"])
 handler = WebhookHandler(token["CH"])
-
-# 洗濯物を取り込む予定時刻(乾く時間の計算結果がここに入る)
-estimated_time = 16 # <= 仮の値
-
-# jsonファイルから画像のダイレクトアクセスURLを取得
-img = open('..\\lib\\images.json')
-image_url = json.load(img)
-print(image_url)
 
 # 現在日時から季節を算出
 dt_now = datetime.datetime.now(pytz.timezone('Asia/Tokyo'))
@@ -53,49 +59,37 @@ def handle_follow(event):
         TextSendMessage(text = send_text)
     )
 
-
 @app.route("/callback", methods=['POST'])
 def callback():
-    # get X-Line-Signature header value
+    print("callback in")
     signature = request.headers['X-Line-Signature']
-
-    # get request body as text
     body = request.get_data(as_text=True)
     app.logger.info("Request body: " + body)
-
-    # handle webhook body
     try:
         handler.handle(body, signature)
     except InvalidSignatureError:
-        print("Invalid signature. Please check your channel access token/channel secret.")
         abort(400)
-
     return 'OK'
 
 
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
-    receive_text = event.message.text
-    notify_hangout_laundry = 0
-
+    print(event)
     CM = MysqlConnectorManager(user=sqladdmin['user'],
         password=sqladdmin['password'],
         host=sqladdmin['host'],
         database_name=sqladdmin['database'])
     CM.start_connection()
-
-    result = CM.fetch_contents(("select * from USER WHERE UserId=%s"),(event.userId))
-    print("event:\n",event)
+    print(event.source.user_id)
+    #event.source.user_id
+    q = "SELECT * FROM USER WHERE UserId=%s"
+    ps = (event.source.user_id, )
+    result = CM.fetch_contents(q,ps)
     if len(result)==0:
-        CM.insert_contents(("insert into USER(UserId,UserName,flag) value(%s,%s,%s)"),(event.userId,event.userName,"ASKADDRESS"))
+        CM.insert_contents(("insert into USER (UserId,flag) values (%s,%s)"),(event.source.user_id,"ASKADDRESS"))
         line_bot_api.reply_message(
             event.reply_token,
-            TextSendMessage(text="登録しました"))
-    else:
-        line_bot_api.reply_message(
-            event.reply_token,
-            TextSendMessage(text="登録済"))
-
+            TextSendMessage(text="ddd-dddd 形式で郵便番号を入力してください。"))
 
 def flagroute(event,result,CM):
     if result.flag == "ASKADDRESS":
