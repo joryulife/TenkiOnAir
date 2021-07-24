@@ -13,7 +13,7 @@ from linebot.exceptions import (
 from linebot.models import (
     MessageEvent, TextMessage, TextSendMessage,
 )
-
+from datetime import datetime as dt
 from MysqlManager import MysqlConnectorManager
 
 token = open('../lib/token.json','r')
@@ -25,6 +25,7 @@ import datetime, random, pytz, re
 from MysqlManager import MysqlConnectorManager
 import CheckPostalPattern
 import RequestWhetherApi
+import Back_calculation
 
 sqladdmin = open('../lib/sqladdmin.json','r')
 sqladdmin = json.load(sqladdmin)
@@ -117,15 +118,21 @@ def flagroute(event,result,CM):
         if event.message.text == "干した":
             if event.message.text == "干した":
                 dt_now = datetime.datetime.now()
-                postal_code = CM.fetch_contents(("SELECT Uaddress　FROM USER WHERE UserId = %s"),(result["UserId"]))
+                postal_code = CM.fetch_contents(("SELECT Uaddress FROM USER WHERE UserId = %s"),(result["UserId"], ))
                 ScheduledTime = RequestWhetherApi.GetScheduledTime(dt_now,postal_code)
                 #取込み予想の計算、メッセージへ　ScheduledTimeに
                 CM.update_delete_contents(("UPDATE USER SET flag=%s　ScheduledTime=%s where UserId = %s"),("WaitTakeIn",ScheduledTime,result["UserId"]))
                 line_bot_api.reply_message(event.reply_token,TextSendMessage(text='洗濯物が乾く時間は' + dt_now.strftime('%m月%d日 %H時%M分です。')))
         elif event.message.text == "コレクション":
-            collection_items = CM.fetch_contents(("SELECT CollectionSum FROM  USER WHERE UserId = %s"),('ASC', ))
-            for item_url in collection_items:
-                line_bot_api.broadcast(ImageSendMessage(original_content_url=item_url, preview_image_url=item_url))
+            collectionsum = CM.fetch_contents(("SELECT CollectionSum FROM  USER WHERE UserId = %s"),(result["UserId"], ))
+            collectionsum = Back_calculation.BackCalculation(collectionsum[0]["CollectionSum"])
+            print(collectionsum)
+            IMAGES = []
+            for ItemId in collectionsum:
+                item_url=CM.fetch_contents("SELECT * FROM Items where ItemId = %s",(ItemId, ))
+                ImgOb = ImageSendMessage(original_content_url=item_url[0]["ImageUrl"], preview_image_url=item_url[0]["ImageUrl"])
+                IMAGES.append(ImgOb)
+            line_bot_api.reply_message(event.reply_token,IMAGES)
             #DBからコレクションを取得しメッセージへ
             CM.update_delete_contents(("UPDATE USER SET flag=%s where UserId = %s"),("FLAT",result["UserId"]))
         elif event.message.text == "リマインド":
@@ -165,10 +172,10 @@ def flagroute(event,result,CM):
             #USAGEを送る
             usage = 'もし洗濯物を取り込んだら、「取り込んだ」と送信してください。'
             line_bot_api.reply_message(event.reply_token, TextSendMessage(usage))
-    elif result.flag == "WaitRemindTime":
-        if re.match(r'([01][0-9]|2[0-1]):[0-5][0-9]',event.message.text):#だれか正規表現で時刻かどうかみて
-            remindTime = event.message.text
-            CM.update_delete_contents(("UPDATE USER SET flag=%s remindTime=%s where UserId = %s"),("FLAT",remindTime,result["UserId"]))
+    elif result["flag"] == "WaitRemindTime":
+        if re.match(r'([01][0-9]|2[0-3]):[0-5][0-9]',event.message.text):#だれか正規表現で時刻かどうかみて
+            RT = dt.strptime(event.message.text,'%H:%M')
+            CM.update_delete_contents(("UPDATE USER SET flag=%s,remindTime=cast(%s as datetime) where UserId = %s"),("FLAT", RT , result["UserId"]))
             usage = event.message.text+"で登録しました"
             line_bot_api.reply_message(event.reply_token, TextSendMessage(usage))
         else:
