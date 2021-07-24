@@ -90,31 +90,3 @@ def GetScheduledTime(start_time,postal_code):
     add_hours = round(3.0*(weather_sum/6.0)*(temperature_sum/6.0),1)
     #datetime型で予定時刻を返す
     return dt_now + datetime.timedelta(hours=add_hours)
-
-#デバッグ用 ↓
-if __name__ == "__main__":
-    #開始時間と郵便番号
-    dt_now = datetime.datetime.now()
-    postal_code = '466-0827'
-
-    dict = GetWeather(postal_code)
-    weather_sum = 0
-    temperature_sum = 0
-    print("場所:" + str(dict["city"]['name']))
-    i = 0
-    for d in dict['list']:
-        dict_time = datetime.datetime.strptime(d['dt_txt'], '%Y-%m-%d %H:%M:%S')
-        if dict_time > dt_now:
-            print(dict_time)
-            i += 1
-        if i > 3:
-            break
-        weather_sum += SetWeatherWeight(d)
-        temperature_sum += SetTemperatureWeight(d)
-
-    #取り込み時間
-    add_hours = round(3.0*(weather_sum/6.0)*(temperature_sum/6.0),1)
-    print(add_hours)
-    print(dt_now + datetime.timedelta(hours=add_hours))
-
-

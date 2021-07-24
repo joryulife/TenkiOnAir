@@ -10,8 +10,13 @@ def CheckExistence(input):
     }
     res = requests.get(url,params=params)
     dict = json.loads(res.text)
-    return 'error' in dict['response']
-
+    if 'error' in dict['response']:
+        #存在しない場合
+        return 1
+    else:
+        #エラーがない場合
+        return 0
+    
 def CheckFormat(input):
     #数字7桁「ddddddd」　or　郵便番号のフォーマット「ddd-dddd」
     if re.fullmatch(r"\d{7}", input) != None:
@@ -20,14 +25,9 @@ def CheckFormat(input):
     if result != None:
         return CheckExistence(input)
     else:
-        return False
+        #formatが不正
+        return 2
 
-
-if __name__ == "__main__":
-    #郵便番号
-    input = "466-0827"
-    if CheckFormat(input):
-        print("入力が不正です")
-    else:
-        print("登録しました")
-
+def CheckPostalCode(postal_code):
+    #0:問題なし, 1:住所が存在しない, 2:フォーマットが不正
+    return CheckFormat(input)

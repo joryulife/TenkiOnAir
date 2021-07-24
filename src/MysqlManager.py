@@ -50,15 +50,15 @@ class MysqlConnectorManager():
     def fetch_contents(self, query: str,ps: str) -> List[Dict[str, Any]]:
         """DBから情報を取得する
         """
-        print(query)
+        #print(query)
         self.cur.execute(query,ps)
         fetched_contents: List[Dict[str, Any]] = self.cur.fetchall()
         return fetched_contents
     
-    def update_delete_contents(self, query: str):
+    def update_delete_contents(self, query: str,ps: str):
         """データを更新する
         """
-        self.cur.execute(query)
+        self.cur.execute(query,ps)
         self.conn.commit()
 
     def insert_contents(self, query: str,ps: str):
