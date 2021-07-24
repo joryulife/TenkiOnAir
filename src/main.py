@@ -85,8 +85,17 @@ def handle_message(event):
     CM.start_connection()
 
     result = CM.fetch_contents(("select * from USER WHERE UserId=%s"),(event.userId))
+    print("event:\n",event)
     if len(result)==0:
-        CM.insert_contents(("insert into USER(UserId,UserName,flag) value(%s,%s,%s)"),(event.userId,event.userName,ASKADDRESS))
+        CM.insert_contents(("insert into USER(UserId,UserName,flag) value(%s,%s,%s)"),(event.userId,event.userName,"ASKADDRESS"))
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text="登録しました"))
+    else:
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text="登録済"))
+
 
 def flagroute(event,result,CM):
     if result.flag == "ASKADDRESS":
