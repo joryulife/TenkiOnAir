@@ -2,7 +2,9 @@ CREATE TABLE USER(
     UserId varchar(35) primary key,
     UserName varchar(20) NOT NULL,
     Uaddress varchar(100) NOT NULL,
-    CollectionSum int default 0
+    CollectionSum int default 0,
+    ScheduledTime datetime
+    remindTime datetime
 )
 
 CREATE TABLE Items(
