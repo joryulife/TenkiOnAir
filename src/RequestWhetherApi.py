@@ -2,7 +2,7 @@ import requests
 import json
 
 def get_current_weather(input):
-    API_KEY = "0fedfd4841eac192a6d3f3819f1bd491"  # xxxに自分のAPI Keyを入力。
+    API_KEY = "xxxxxxxxxxxxxx"  # xxxに自分のAPI Keyを入力。
     api = "http://api.openweathermap.org/data/2.5/forecast?zip={code},jp&units=metric&lang=ja&APPID={key}"
     url = api.format(code=input, key=API_KEY)
 
@@ -22,20 +22,27 @@ def get_current_weather(input):
         dict = json.loads(res.text)
         longitude = dict["response"]["location"][0]["x"]
         latitude = dict["response"]["location"][0]["y"]
-        url='http://api.openweathermap.org/data/2.5/forecast'
-        params={
-            "lon":longitude,
-            "lat":latitude,
-            "units":"metric",
-            "APPID":"0fedfd4841eac192a6d3f3819f1bd491"
-        }
-        res = requests.get(url,params=params)
+        api='http://api.openweathermap.org/data/2.5/forecast?lon={lon}&lat={lat}&APPID={key}'
+        url = api.format(lon=longitude, lat=latitude, key=API_KEY)
+        res = requests.get(url).json()
         return res
 
 if __name__ == "__main__":
     #郵便番号
-    postal_code = '771-1623'
-    dict = json.loads(get_current_weather(postal_code).text)
-    print(dict)
-
+    postal_code = '466-0827'
+    dict = get_current_weather(postal_code)
+    print("場所:" + str(dict["city"]['name']))
+    for d in dict['list']:
+        #時間
+        print("時刻: " + str(d['dt_txt']))
+        #天気
+        print("天気: " + str(d['weather'][0]['description']))
+        #湿度
+        print("湿度: " + str(d['main']['humidity']) + "[%]")
+        #気温
+        print("気温: " + str(d['main']['temp']) + "[℃]")
+        #曇の割合
+        print("雲の割合: " + str(d['clouds']['all']) + "[%]")
+        #降水確率
+        print("降水確率: " + str(d['pop']) + "[%]")
 
