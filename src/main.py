@@ -1,3 +1,4 @@
+from io import DEFAULT_BUFFER_SIZE
 from flask import Flask, request, abort
 from linebot import (
     LineBotApi, WebhookHandler
@@ -14,9 +15,9 @@ import json
 import datetime, pytz, random
 
 from ..lib import token
-
-# 最初の通知する時間を設定するときに使用
-TIME_LIST = ['0','1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','17','18','19','20','21','22','23','24']
+from MysqlManager import MysqlConnectorManager
+sqladdmin = open('../lib/sqladdmin.json','r')
+sqladdmin = json.load(sqladdmin)
 
 app = Flask(__name__)
 
@@ -77,75 +78,54 @@ def handle_message(event):
     receive_text = event.message.text
     notify_hangout_laundry = 0
 
-    # TIME_LISTに入っている数字を受信したとき洗濯物を干す通知をする時間を設定。
-    if receive_text in TIME_LIST:
-        notify_hangout_laundry = receive_text
-        notify_message = receive_text + "時で設定しました。"
-        line_bot_api.reply_message(
-            event.reply_token,
-            TextSendMessage(text=notify_message)
-        )
+    CM = MysqlConnectorManager(user=sqladdmin['user'],
+        password=sqladdmin['password'],
+        host=sqladdmin['host'],
+        database_name=sqladdmin['database'])
+    CM.start_connection()
 
-    # 毎日定時に水やりが必要な画像を送信
-    dt_hour = dt_now.hour
-    if dt_hour == notify_hangout_laundry:
-        send_image = image_url['seedling']
-        # 画像を送信
-        line_bot_api.broadcast(ImageSendMessage(
-        original_content_url=send_image,
-        preview_image_url=send_image
-    ) )
+    result = CM.fetch_contents(("select * from USER WHERE UserId=%s"),(event.userId))
+    if len(result)==0:
+        CM.insert_contents(("insert into USER(UserId,UserName,flag) value(%s,%s,%s)"),(event.userId,event.userName,ASKADDRESS))
 
-    # 洗濯物を干したら水やりをしている画像を送信
-    if '干した' in receive_text:
-        send_image = image_url['watering']
-        line_bot_api.broadcast(ImageSendMessage(
-            original_content_url=send_image,
-            preview_image_url=send_image
-        ) )
-
-
-    if '取り込んだ' in receive_text:
-
-        if dt_h <= estimated_time+3:
-            # 季節と確率で送る画像を選ぶ
-            random_value = random.uniform(0, 10)
-
-            if season == 2:
-                if random_value <= 2:
-                    send_image = image_url['cherry_blossoms']
-                else:
-                    send_image = image_url['dandelions']
-            elif season == 3:
-                if random_value <= 2:
-                    send_image = image_url['sunflower']
-                else:
-                    send_image = image_url['hydrangea']
-            elif season == 4:
-                if random_value <= 2:
-                    send_image = image_url['dianthus']
-                else:
-                    send_image = image_url['cosmos']
-            else:
-                if random_value <= 2:
-                    send_image = image_url['christmas_rose']
-                else:
-                    send_image = image_url['cyclamen']
+def flagroute(event,result,CM):
+    if result.flag == "ASKADDRESS":
+        #messageがddd-ddd形式かチェックしてADDRESSに格納
+        CM.update_delete_contents(("UPDATE USER SET flag=%s where UserId = %s"),("FLAT",result.UserId))
+        #USAGEMessageを送る
+    elif result.flag == "FLAT":
+        if event.message == "干した":
+            ScheduledTime = "00:00"
+            #取込み予想の計算、メッセージへ　ScheduledTimeに
+            CM.update_delete_contents(("UPDATE USER SET flag=%s　ScheduledTime=%s where UserId = %s"),("WaitTakeIn",ScheduledTime,result.UserId))
+        elif event.message == "コレクション":
+            #DBからコレクションを取得しメッセージへ
+            CM.update_delete_contents(("UPDATE USER SET flag=%s where UserId = %s"),("FLAT",result.UserId))
+        elif event.message == "リマインド":
+            #何時にする？とmessage
+            CM.update_delete_contents(("UPDATE USER SET flag=%s where UserId = %s"),("WaitRemindTime",result.UserId))
         else:
-            # 洗濯物を取り込む時間を過ぎたら枯れた花を送信
-            send_image = image_url['withered_flower']
-
-        # 画像を送信
-        line_bot_api.broadcast(ImageSendMessage(
-            original_content_url=send_image,
-            preview_image_url=send_image
-        ) )
-
-    # オウム返し部分
-    # line_bot_api.reply_message(
-    #     event.reply_token,
-    #     TextSendMessage(text=event.message.text))
-
+            #USAGEメッセージを送信
+            CM.update_delete_contents(("UPDATE USER SET flag=%s where UserId = %s"),("FLAT",result.UserId))
+    elif result.flag == "WaitTakeIn":
+        if event.message == "取り込んだ":
+            #コレクションをランダムで選び、何が貰えたか教える
+            newCollectionSum = 0
+            #コレクションidを加算して更新　newCollectionSum
+            CM.update_delete_contents(("UPDATE USER SET flag=%s CollectionSum=%s where UserId = %s"),("FLAT",newCollectionSum,result.UserId))
+        else :
+            #USAGEを送る
+            Message = ""
+    elif result.flag == "WaitRemindTime":
+        if event.message == "00:00":#だれか正規表現で時刻かどうかみて
+            remindTime = ""
+            CM.update_delete_contents(("UPDATE USER SET flag=%s remindTime=%s where UserId = %s"),("FLAT",remindTime,result.UserId))
+        else:
+            #USAGEを送る
+            Message = "USAGE"
+    else:
+        #USAGEを送る
+        Message = "USAGE" 
 
 if __name__ == "__main__":
     app.run()
