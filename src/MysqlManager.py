@@ -47,10 +47,10 @@ class MysqlConnectorManager():
         self.cur = None
         self.conn = None
 
-    def fetch_contents(self, query: str) -> List[Dict[str, Any]]:
+    def fetch_contents(self, query: str,ps: str) -> List[Dict[str, Any]]:
         """DBから情報を取得する
         """
-        self.cur.execute(query)
+        self.cur.execute(query,ps)
         fetched_contents: List[Dict[str, Any]] = self.cur.fetchall()
 
         return fetched_contents
