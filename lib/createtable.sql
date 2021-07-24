@@ -3,8 +3,9 @@ CREATE TABLE USER(
     UserName varchar(20) NOT NULL,
     Uaddress varchar(100) NOT NULL,
     CollectionSum int default 0,
-    ScheduledTime datetime
-    remindTime datetime
+    ScheduledTime datetime,
+    remindTime datetime,
+    flag varchar(20) NOT NULL
 )
 
 CREATE TABLE Items(
