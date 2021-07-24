@@ -1,6 +1,3 @@
-from typing import Collection
-
-
 def BackCalculation(CollectionSum):
     Collection = []
     if CollectionSum == 0:

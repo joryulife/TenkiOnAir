@@ -4,7 +4,10 @@ from ..lib import sqladdmin
 
 # DBへ接続
 conn = mysql.connector.connect(
-    sqladdmin
+    user=sqladdmin.user,
+    password=sqladdmin.password,
+    host=sqladdmin.host,
+    database_name=sqladdmin.database
 )
 
 # DBの接続確認
@@ -17,8 +20,9 @@ query__for_fetching = """
 SELECT
     sample_table.sample_id   AS id,
     sample_table.sample_name AS name
-    FROM sample_table
-    ORDER BY sample_table.sample_id;
+FROM sample_table
+ORDER BY sample_table.sample_id
+;
 """
 
 cur.execute(query__for_fetching)

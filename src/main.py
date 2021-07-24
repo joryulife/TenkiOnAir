@@ -1,4 +1,6 @@
+import json
 from flask import Flask, request, abort
+from MysqlManager import MysqlConnectorManager
 
 from linebot import (
     LineBotApi, WebhookHandler
@@ -9,14 +11,27 @@ from linebot.exceptions import (
 from linebot.models import (
     MessageEvent, TextMessage, TextSendMessage,
 )
+from MysqlManager import MysqlConnectorManager
 
-from ..lib import token
+token = open('../lib/token.json','r')
+token = json.load(token)
+
+sqladdmin = open('../lib/sqladdmin.json','r')
+sqladdmin = json.load(sqladdmin)
+CM = MysqlConnectorManager(user=sqladdmin['user'],
+    password=sqladdmin['password'],
+    host=sqladdmin['host'],
+    database_name=sqladdmin['database'])
+CM.start_connection()
+#q = ("insert into TESTTABLE value(%s,%s)")
+#ps =(2, 'TEST2')
+#ans =CM.insert_contents(q,ps)
+#print(ans)
 
 app = Flask(__name__)
 
-line_bot_api = LineBotApi(token.CAT)
-handler = WebhookHandler(token.CH)
-
+line_bot_api = LineBotApi(token["CAT"])
+handler = WebhookHandler(token["CH"])
 
 @app.route("/callback", methods=['POST'])
 def callback():
@@ -39,6 +54,7 @@ def callback():
 
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
+    print(event)
     line_bot_api.reply_message(
         event.reply_token,
         TextSendMessage(text=event.message.text))
