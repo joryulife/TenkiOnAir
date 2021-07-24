@@ -20,8 +20,8 @@ TIME_LIST = ['0','1','2','3','4','5','6','7','8','9','10','11','12','13','14','1
 
 app = Flask(__name__)
 
-line_bot_api = LineBotApi(token.CAT)
-handler = WebhookHandler(token.CH)
+line_bot_api = LineBotApi(token["CAT"])
+handler = WebhookHandler(token["CH"])
 
 # 洗濯物を取り込む予定時刻(乾く時間の計算結果がここに入る)
 estimated_time = 16 # <= 仮の値
