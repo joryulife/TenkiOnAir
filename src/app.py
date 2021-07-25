@@ -1,23 +1,16 @@
 
 import json
+import schedule
+import time
 from flask import Flask, request, abort
 from MysqlManager import MysqlConnectorManager
 from io import DEFAULT_BUFFER_SIZE
 from flask import Flask, request, abort
-from linebot import (
-    LineBotApi, WebhookHandler
-)
-from linebot.exceptions import (
-    InvalidSignatureError
-)
-from linebot.models import (
-    MessageEvent, TextMessage, TextSendMessage,
-)
+from linebot import (LineBotApi, WebhookHandler)
+from linebot.exceptions import (InvalidSignatureError)
+from linebot.models import (MessageEvent, TextMessage, TextSendMessage,)
 from datetime import datetime as dt
 from MysqlManager import MysqlConnectorManager
-
-token = open('../lib/token.json','r')
-token = json.load(token)
 from linebot.models.events import FollowEvent
 from linebot.models.send_messages import ImageSendMessage
 import json
@@ -27,6 +20,8 @@ import CheckPostalPattern
 import RequestWhetherApi
 import Back_calculation
 
+token = open('../lib/token.json','r')
+token = json.load(token)
 sqladdmin = open('../lib/sqladdmin.json','r')
 sqladdmin = json.load(sqladdmin)
 CM = MysqlConnectorManager(user=sqladdmin['user'],
@@ -226,5 +221,14 @@ def flagroute(event,result,CM):
         usage = "エラーが起きました！！"
         line_bot_api.reply_message(event.reply_token, TextSendMessage(text=usage))
 
+def remind():
+    dt_now = datetime.datetime.now()
+    time = dt_now.hour+":"+dt_now.minute
+    list = CM.fetch_contents(("SELECT * FROM USER WHERE remindTime=%s"),(time, ))
+    for i in list:
+        line_bot_api.push_message(i["UserId"],TextSendMessage("洗濯物をほす時間ですよ！"))
+
+
 if __name__ == "__main__":
     app.run()
+    #schedule.every(1).minutes.do(remind)
