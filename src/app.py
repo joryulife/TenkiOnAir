@@ -1,7 +1,5 @@
 
 import json
-import schedule
-import time
 from flask import Flask, request, abort
 from MysqlManager import MysqlConnectorManager
 from io import DEFAULT_BUFFER_SIZE
@@ -19,6 +17,9 @@ from MysqlManager import MysqlConnectorManager
 import CheckPostalPattern
 import RequestWhetherApi
 import Back_calculation
+import time
+
+from apscheduler.schedulers.background import BackgroundScheduler
 
 token = open('../lib/token.json','r')
 token = json.load(token)
@@ -35,6 +36,7 @@ token = open('../lib/token.json','r')
 token = json.load(token)
 line_bot_api = LineBotApi(token["CAT"])
 handler = WebhookHandler(token["CH"])
+
 
 # 現在日時から季節を算出
 dt_now = datetime.datetime.now(pytz.timezone('Asia/Tokyo'))
@@ -137,9 +139,12 @@ def flagroute(event,result,CM):
                     IMAGES.append(ImgOb)
                 else:
                     IMAGES2.append(ImgOb)
-            line_bot_api.reply_message(event.reply_token,IMAGES)
-            if len(IMAGES2) != 0:
-                line_bot_api.push_message(result["UserId"],IMAGES2)
+            if len(IMAGES) != 0:
+                line_bot_api.reply_message(event.reply_token,IMAGES)
+                if len(IMAGES2) != 0:
+                    line_bot_api.push_message(result["UserId"],IMAGES2)
+            else:
+                line_bot_api.reply_message(event.reply_token,TextSendMessage("コレクションはありません"))
             #DBからコレクションを取得しメッセージへ
             CM.update_delete_contents(("UPDATE USER SET flag=%s where UserId = %s"),("FLAT",result["UserId"]))
         elif event.message.text == "リマインド":
@@ -222,13 +227,18 @@ def flagroute(event,result,CM):
         line_bot_api.reply_message(event.reply_token, TextSendMessage(text=usage))
 
 def remind():
+    print("REMIND!!")
     dt_now = datetime.datetime.now()
-    time = dt_now.hour+":"+dt_now.minute
-    list = CM.fetch_contents(("SELECT * FROM USER WHERE remindTime=%s"),(time, ))
+    time = dt_now.strftime('%H:%M')
+    list = CM.fetch_contents(("SELECT * FROM USER WHERE remindTime=%s"),("13:19", ))
     for i in list:
-        line_bot_api.push_message(i["UserId"],TextSendMessage("洗濯物をほす時間ですよ！"))
+        user_id = i["UserId"]
+        message = TextSendMessage("洗濯物をほす時間ですよ！")
+        line_bot_api.push_message(user_id,message)
 
+#scheduler = BackgroundScheduler(daemon=True)
+#scheduler.add_job(func=remind, trigger="interval", minutes=1)
+#scheduler.start()
 
 if __name__ == "__main__":
     app.run()
-    #schedule.every(1).minutes.do(remind)
