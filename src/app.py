@@ -178,8 +178,11 @@ def flagroute(event,result,CM):
                 Messages.append(msg2)
                 line_bot_api.reply_message(event.reply_token,Messages)
                 #コレクションidを加算して更新　newCollectionSum
-                newCollectionSum = fetch_result[0]['ItemId']+result["CollectionSum"]
-                CM.update_delete_contents(("UPDATE USER SET flag=%s,CollectionSum=%s where UserId = %s"),("FLAT",newCollectionSum,result["UserId"]))
+                collection_sum = CM.fetch_contents(("SELECT CollectionSum FROM USER WHERE UserId = %s"), (result["UserId"]))
+                exist_collection = Back_calculation.BackCalculation(collection_sum[0]["CollectionSum"])
+                if fetch_result[0]['ItemId'] not in exist_collection:
+                    newCollectionSum = fetch_result[0]['ItemId']+result["CollectionSum"]
+                    CM.update_delete_contents(("UPDATE USER SET flag=%s,CollectionSum=%s where UserId = %s"),("FLAT",newCollectionSum,result["UserId"]))
             else:
                 #取り込み失敗
                 #枯れた画像を送信 512
