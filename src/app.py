@@ -230,7 +230,7 @@ def remind():
     print("REMIND!!")
     dt_now = datetime.datetime.now()
     time = dt_now.strftime('%H:%M')
-    list = CM.fetch_contents(("SELECT * FROM USER WHERE remindTime=%s"),("13:19", ))
+    list = CM.fetch_contents(("SELECT * FROM USER WHERE remindTime=%s"),(time, ))
     for i in list:
         user_id = i["UserId"]
         message = TextSendMessage("洗濯物をほす時間ですよ！")
