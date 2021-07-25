@@ -108,7 +108,7 @@ def flagroute(event,result,CM):
         #messageがddd-ddd形式かチェックしてADDRESSに格納
         postal_res = CheckPostalPattern.CheckPostalCode(event.message.text)
         if postal_res == 0:
-            CM.update_delete_contents(("UPDATE USER SET flag=%s where UserId = %s"),("FLAT",result["UserId"]))
+            CM.update_delete_contents(("UPDATE USER SET flag=%s,Uaddress=%s where UserId = %s"),("FLAT",event.message.text,result["UserId"]))
             line_bot_api.reply_message(event.reply_token,TextSendMessage("郵便番号を登録しました。"))
         elif postal_res == 1:
             line_bot_api.reply_message(event.reply_token,TextSendMessage("存在する郵便番号を入力してください。"))
@@ -116,27 +116,35 @@ def flagroute(event,result,CM):
             line_bot_api.reply_message(event.reply_token,TextSendMessage("郵便番号は●●●-●●●●(ハイフンなしも可)で送信してください。"))
     elif result["flag"] == "FLAT":
         if event.message.text == "干した":
-            if event.message.text == "干した":
-                dt_now = datetime.datetime.now()
-                postal_code = CM.fetch_contents(("SELECT Uaddress FROM USER WHERE UserId = %s"),(result["UserId"], ))
-                ScheduledTime = RequestWhetherApi.GetScheduledTime(dt_now,postal_code[0]["Uaddress"])
-                # 画像送信処理
-                image_url = CM.fetch_contents(("SELECT ItemUrl FROM Items WHERE ItemId = %s"), (2048))
-                image_message = ImageSendMessage(original_content_url=image_url, preview_image_url=image_url)
-                line_bot_api.reply_message(event.reply_token, image_message)
-                #取込み予想の計算、メッセージへ　ScheduledTimeに
-                CM.update_delete_contents(("UPDATE USER SET flag=%s,ScheduledTime=%s where UserId = %s"),("WaitTakeIn",ScheduledTime.strftime('%Y-%m-%d %H:%M:%S'),result["UserId"]))
-                line_bot_api.reply_message(event.reply_token,TextSendMessage(text='洗濯物が乾く時間は' + ScheduledTime.strftime('%m月%d日 %H時%M分です。')))
+            dt_now = datetime.datetime.now()
+            postal_code = CM.fetch_contents(("SELECT Uaddress FROM USER WHERE UserId = %s"),(result["UserId"], ))
+            ScheduledTime = RequestWhetherApi.GetScheduledTime(dt_now,postal_code[0]["Uaddress"])
+            # 画像送信処理
+            image_url = CM.fetch_contents(("SELECT ImageUrl FROM Items WHERE ItemId = %s"), (2048, ))
+            image_message = ImageSendMessage(original_content_url=image_url[0]["ImageUrl"], preview_image_url=image_url[0]["ImageUrl"])
+            #取込み予想の計算、メッセージへ　ScheduledTimeに
+            print(ScheduledTime.strftime('%m月%d日 %H時%M分です。'))
+            messages = []
+            messages.append(TextSendMessage('洗濯物が乾く時間は' + ScheduledTime.strftime('%m月%d日 %H時%M分です。')))
+            messages.append(image_message)
+            line_bot_api.reply_message(event.reply_token,messages)
+            CM.update_delete_contents(("UPDATE USER SET flag=%s,ScheduledTime=%s where UserId = %s"),("WaitTakeIn",ScheduledTime,result["UserId"]))
         elif event.message.text == "コレクション":
             collectionsum = CM.fetch_contents(("SELECT CollectionSum FROM  USER WHERE UserId = %s"),(result["UserId"], ))
             collectionsum = Back_calculation.BackCalculation(collectionsum[0]["CollectionSum"])
             print(collectionsum)
             IMAGES = []
+            IMAGES2 = []
             for ItemId in collectionsum:
                 item_url=CM.fetch_contents("SELECT * FROM Items where ItemId = %s",(ItemId, ))
                 ImgOb = ImageSendMessage(original_content_url=item_url[0]["ImageUrl"], preview_image_url=item_url[0]["ImageUrl"])
-                IMAGES.append(ImgOb)
+                if len(IMAGES) < 5:
+                    IMAGES.append(ImgOb)
+                else:
+                    IMAGES2.append(ImgOb)
             line_bot_api.reply_message(event.reply_token,IMAGES)
+            if len(IMAGES2) != 0:
+                line_bot_api.push_message(result["UserId"],IMAGES2)
             #DBからコレクションを取得しメッセージへ
             CM.update_delete_contents(("UPDATE USER SET flag=%s where UserId = %s"),("FLAT",result["UserId"]))
         elif event.message.text == "リマインド":

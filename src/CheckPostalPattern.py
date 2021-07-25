@@ -30,4 +30,4 @@ def CheckFormat(input):
 
 def CheckPostalCode(postal_code):
     #0:問題なし, 1:住所が存在しない, 2:フォーマットが不正
-    return CheckFormat(input)
+    return CheckFormat(postal_code)
