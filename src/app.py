@@ -120,6 +120,10 @@ def flagroute(event,result,CM):
                 dt_now = datetime.datetime.now()
                 postal_code = CM.fetch_contents(("SELECT Uaddress FROM USER WHERE UserId = %s"),(result["UserId"], ))
                 ScheduledTime = RequestWhetherApi.GetScheduledTime(dt_now,postal_code[0]["Uaddress"])
+                # 画像送信
+                image_url = CM.fetch_contents(("SELECT ItemUrl FROM Items WHERE ItemId = %s"), (2048))
+                image_message = ImageSendMessage(original_content_url=image_url, preview_image_url=image_url)
+                line_bot_api.reply_message(event.reply_token, image_message)
                 #取込み予想の計算、メッセージへ　ScheduledTimeに
                 CM.update_delete_contents(("UPDATE USER SET flag=%s,ScheduledTime=%s where UserId = %s"),("WaitTakeIn",ScheduledTime.strftime('%Y-%m-%d %H:%M:%S'),result["UserId"]))
                 line_bot_api.reply_message(event.reply_token,TextSendMessage(text='洗濯物が乾く時間は' + ScheduledTime.strftime('%m月%d日 %H時%M分です。')))
