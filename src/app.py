@@ -119,9 +119,9 @@ def flagroute(event,result,CM):
             if event.message.text == "干した":
                 dt_now = datetime.datetime.now()
                 postal_code = CM.fetch_contents(("SELECT Uaddress FROM USER WHERE UserId = %s"),(result["UserId"], ))
-                ScheduledTime = RequestWhetherApi.GetScheduledTime(dt_now,postal_code)
+                ScheduledTime = RequestWhetherApi.GetScheduledTime(dt_now,postal_code[0]["Uaddress"])
                 #取込み予想の計算、メッセージへ　ScheduledTimeに
-                CM.update_delete_contents(("UPDATE USER SET flag=%s　ScheduledTime=%s where UserId = %s"),("WaitTakeIn",ScheduledTime,result["UserId"]))
+                CM.update_delete_contents(("UPDATE USER SET flag=%s,ScheduledTime=%s where UserId = %s"),("WaitTakeIn",ScheduledTime,result["UserId"]))
                 line_bot_api.reply_message(event.reply_token,TextSendMessage(text='洗濯物が乾く時間は' + dt_now.strftime('%m月%d日 %H時%M分です。')))
         elif event.message.text == "コレクション":
             collectionsum = CM.fetch_contents(("SELECT CollectionSum FROM  USER WHERE UserId = %s"),(result["UserId"], ))
@@ -162,12 +162,17 @@ def flagroute(event,result,CM):
                 random_num = gen_random(32, 64)
 
             fetch_result = CM.fetch_contents(("SELECT * FROM Items WHERE ItemId=%s"),(random_num, ))
-            fetch_url = fetch_result['ImageUrl']
+            fetch_url = fetch_result[0]['ImageUrl']
             # 画像送信
-            line_bot_api.broadcast(ImageSendMessage(original_content_url=fetch_url,preview_image_url=fetch_url))
+            Messages = []
+            msg1 = ImageSendMessage(original_content_url=fetch_url,preview_image_url=fetch_url)
+            Messages.append(msg1)
+            msg2 = TextSendMessage("を獲得しました。")
+            Messages.append(msg2)
+            line_bot_api.reply_message(event.reply_token,Messages)
             #コレクションidを加算して更新　newCollectionSum
-            newCollectionSum = fetch_result['ImageId']+result.CollectionSum
-            CM.update_delete_contents(("UPDATE USER SET flag=%s CollectionSum=%s where UserId = %s"),("FLAT",newCollectionSum,result["UserId"]))
+            newCollectionSum = fetch_result[0]['ItemId']+result["CollectionSum"]
+            CM.update_delete_contents(("UPDATE USER SET flag=%s,CollectionSum=%s where UserId = %s"),("FLAT",newCollectionSum,result["UserId"]))
         else :
             #USAGEを送る
             usage = 'もし洗濯物を取り込んだら、「取り込んだ」と送信してください。'
