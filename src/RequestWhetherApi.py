@@ -80,12 +80,14 @@ def GetScheduledTime(start_time,postal_code):
     for d in dict['list']:
         dict_time = datetime.datetime.strptime(d['dt_txt'], '%Y-%m-%d %H:%M:%S')
         if dict_time > start_time:
+            weather_sum += SetWeatherWeight(d)
+            temperature_sum += SetTemperatureWeight(d)
             i += 1
         if i > 3:
             break
-        weather_sum += SetWeatherWeight(d)
-        temperature_sum += SetTemperatureWeight(d)
     #計算式
-    add_hours = round(3.0*(weather_sum/5.0)*(temperature_sum/5.0),1)
+    add_hours = round(3.0*(weather_sum/4.0)*(temperature_sum/4.0),1)
     #datetime型で予定時刻を返す
     return start_time + datetime.timedelta(hours=add_hours)
+
+print(GetScheduledTime(datetime.datetime.now(),"466-0827"))
