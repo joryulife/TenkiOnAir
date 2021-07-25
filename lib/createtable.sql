@@ -3,10 +3,10 @@ DROP TABLE Items;
 
 CREATE TABLE USER(
     UserId varchar(35) primary key,
-    Uaddress varchar(8) NOT NULL default "ddd-dddd",
+    Uaddress varchar(8) ,
     CollectionSum int default 0,
     ScheduledTime datetime,
-    remindTime datetime,
+    remindTime varchar(5),
     flag varchar(20) NOT NULL
 );
 
