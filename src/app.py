@@ -122,7 +122,7 @@ def flagroute(event,result,CM):
                 ScheduledTime = RequestWhetherApi.GetScheduledTime(dt_now,postal_code[0]["Uaddress"])
                 #取込み予想の計算、メッセージへ　ScheduledTimeに
                 CM.update_delete_contents(("UPDATE USER SET flag=%s,ScheduledTime=%s where UserId = %s"),("WaitTakeIn",ScheduledTime.strftime('%Y-%m-%d %H:%M:%S'),result["UserId"]))
-                line_bot_api.reply_message(event.reply_token,TextSendMessage(text='洗濯物が乾く時間は' + dt_now.strftime('%m月%d日 %H時%M分です。')))
+                line_bot_api.reply_message(event.reply_token,TextSendMessage(text='洗濯物が乾く時間は' + ScheduledTime.strftime('%m月%d日 %H時%M分です。')))
         elif event.message.text == "コレクション":
             collectionsum = CM.fetch_contents(("SELECT CollectionSum FROM  USER WHERE UserId = %s"),(result["UserId"], ))
             collectionsum = Back_calculation.BackCalculation(collectionsum[0]["CollectionSum"])
@@ -154,8 +154,9 @@ def flagroute(event,result,CM):
             dt_now = datetime.datetime.now()
             ScheduledTime = CM.fetch_contents(("SELECT ScheduledTime FROM USER WHERE UserId = %s"),(result["UserId"], ))
             #datetime型に変換
-            end_point = datetime.datetime.strptime(ScheduledTime[0]["ScheduledTime"],'%Y-%m-%d %H:%M:%S')
-            if (end_point + datetime.timedelta(hours=1)) < dt_now <  (end_point + datetime.timedelta(hours=3)):
+            #end_point = datetime.datetime.strptime(ScheduledTime[0]["ScheduledTime"],'%Y-%m-%d %H:%M:%S')
+            end_point = ScheduledTime[0]["ScheduledTime"]
+            if (end_point + datetime.timedelta(hours=-1)) < dt_now <  (end_point + datetime.timedelta(hours=3)):
                 #取り込み成功
                 #コレクションをランダムで選び、何が貰えたか教える
                 if season == 1: # 冬の時
@@ -182,7 +183,7 @@ def flagroute(event,result,CM):
             else:
                 #取り込み失敗
                 #枯れた画像を送信 512
-                fetch_result = CM.fetch_contents("SELECT * FROM Items WHERE ItemId=512")
+                fetch_result = CM.fetch_contents(("SELECT * FROM Items WHERE ItemId=512"),())
                 fetch_url = fetch_result[0]['ImageUrl']
                 Messages = []
                 msg1 = ImageSendMessage(original_content_url=fetch_url,preview_image_url=fetch_url)
