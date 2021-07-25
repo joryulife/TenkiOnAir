@@ -156,7 +156,7 @@ def flagroute(event,result,CM):
             #datetime型に変換
             #end_point = datetime.datetime.strptime(ScheduledTime[0]["ScheduledTime"],'%Y-%m-%d %H:%M:%S')
             end_point = ScheduledTime[0]["ScheduledTime"]
-            if (end_point + datetime.timedelta(hours=-1)) < dt_now <  (end_point + datetime.timedelta(hours=3)):
+            if (end_point + datetime.timedelta(hours=-12)) < dt_now <  (end_point + datetime.timedelta(hours=3)):
                 #取り込み成功
                 #コレクションをランダムで選び、何が貰えたか教える
                 if season == 1: # 冬の時
@@ -178,7 +178,7 @@ def flagroute(event,result,CM):
                 Messages.append(msg2)
                 line_bot_api.reply_message(event.reply_token,Messages)
                 #コレクションidを加算して更新　newCollectionSum
-                collection_sum = CM.fetch_contents(("SELECT CollectionSum FROM USER WHERE UserId = %s"), (result["UserId"]))
+                collection_sum = CM.fetch_contents(("SELECT CollectionSum FROM USER WHERE UserId = %s"), (result["UserId"], ))
                 exist_collection = Back_calculation.BackCalculation(collection_sum[0]["CollectionSum"])
                 if fetch_result[0]['ItemId'] not in exist_collection:
                     newCollectionSum = fetch_result[0]['ItemId']+result["CollectionSum"]
@@ -201,8 +201,8 @@ def flagroute(event,result,CM):
             line_bot_api.reply_message(event.reply_token, TextSendMessage(usage))
     elif result["flag"] == "WaitRemindTime":
         if re.match(r'([01][0-9]|2[0-3]):[0-5][0-9]',event.message.text):#だれか正規表現で時刻かどうかみて
-            RT = dt.strptime(event.message.text,'%H:%M')
-            CM.update_delete_contents(("UPDATE USER SET flag=%s,remindTime=cast(%s as datetime) where UserId = %s"),("FLAT", RT , result["UserId"]))
+            RT = event.message.text
+            CM.update_delete_contents(("UPDATE USER SET flag=%s,remindTime=%s where UserId = %s"),("FLAT", RT , result["UserId"]))
             usage = event.message.text+"で登録しました"
             line_bot_api.reply_message(event.reply_token, TextSendMessage(usage))
         else:
